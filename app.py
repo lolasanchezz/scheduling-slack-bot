@@ -23,9 +23,6 @@ def slack_events():
 def healthcheck():
     return "ok", 200
 
-if __name__ == "__main__":
-    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))
-
 
 
 
@@ -544,4 +541,4 @@ def handle_unconfirm_schedule(ack, body, client):
 
 
 if __name__ == "__main__":
-    SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
