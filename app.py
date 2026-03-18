@@ -447,8 +447,90 @@ def handle_remove_time_slot_submission(ack, body, client, view):
             current_schedule["slots"]
         ),
     )
+
+@app.command("/confirm-schedule")
+def finalize_schedule(ack, respond):
+    ack()
+
+    if current_schedule is None:
+        respond("No active schedule. Make one with /schedule")
+        return
+
+    final_str = "*Preview:*\n*Upcoming lock in huddles!*\n\n"
+
+    signup_lines = []
+    for slot, users in current_schedule["slots"].items():
+        if users:
+            mentions = " ".join(f"<@{user_id}>" for user_id in users)
+            signup_lines.append(f"*{slot}*: {mentions}")
+    if signup_lines == []:
+        respond("nobody has signed up for anything! aborting")
+        return  
+
+    final_str += "\n".join(signup_lines)
+
+    respond({
+        "response_type": "in_channel",
+        "text": "Confirm schedule",
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": final_str
+                }
+            },
+            {
+                "type": "actions",
+                "block_id": "confirm_schedule_actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Confirm"},
+                        "action_id": "confirm_schedule",
+                        "value": "confirm",
+                        "style": "primary"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Unconfirm"},
+                        "action_id": "unconfirm_schedule",
+                        "value": "unconfirm"
+                    }
+                ]
+            }
+        ]
+    })
     
     
+@app.action("confirm_schedule")
+def handle_confirm_schedule(ack, body, client):
+    global current_schedule, current_schedule_ts
+ 
+    ack()
+
+    if current_schedule is None or current_schedule_ts is None:
+        return
+
+    client.chat_postMessage(
+        channel=current_schedule["channel_id"],
+        text=":white_check_mark: Schedule confirmed."
+    )
+    current_schedule = None
+    current_schedule_ts = None
     
+@app.action("unconfirm_schedule")
+def handle_unconfirm_schedule(ack, body, client):
+    ack()
+
+    if current_schedule is None or current_schedule_ts is None:
+        return
+
+    client.chat_postMessage(
+        channel=current_schedule["channel_id"],
+        text=":x: Schedule unconfirmed."
+    )
+
+
 if __name__ == "__main__":
     SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
