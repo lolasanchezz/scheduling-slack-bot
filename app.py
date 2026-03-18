@@ -3,21 +3,32 @@ import re
 from datetime import datetime, timedelta
 
 from slack_bolt import App
-from slack_bolt.adapter.socket_mode import SocketModeHandler
+from flask import Flask, request
+from slack_bolt.adapter.flask import SlackRequestHandler
 current_schedule = None
 current_schedule_ts = None
-app = App(token=os.environ["SLACK_BOT_TOKEN"])
+app = App(
+    token=os.environ["SLACK_BOT_TOKEN"],
+    signing_secret=os.environ["SLACK_SIGNING_SECRET"],
+)
 
-# In-memory storage:
-# {
-#   message_ts: {
-#       "title": "Office Hours",
-#       "slots": {
-#           "Mar 17, 3:00 PM": ["U123"],
-#           "Mar 17, 3:30 PM": []
-#       }
-#   }
-# }
+flask_app = Flask(__name__)
+handler = SlackRequestHandler(app)
+
+@flask_app.route("/slack/events", methods=["POST"])
+def slack_events():
+    return handler.handle(request)
+
+@flask_app.get("/")
+def healthcheck():
+    return "ok", 200
+
+if __name__ == "__main__":
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))
+
+
+
+
 signups = {}
 
 
